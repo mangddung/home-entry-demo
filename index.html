@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스마트 도어락 모듈 · 시연 영상</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16202e;
+    --muted: #5b6676;
+    --line: #d6dce4;
+    --panel: #f4f6f9;
+    --accent: #1f4e8c;
+    --accent-soft: #e6eef8;
+    --bg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8edf4;
+      --muted: #9aa5b3;
+      --line: #2c3644;
+      --panel: #1a222d;
+      --accent: #7fb0f0;
+      --accent-soft: #1f2d40;
+      --bg: #11171f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; line-height: 1.5; word-break: keep-all; }
+  main { max-width: 640px; margin: 0 auto; padding: 28px 16px 48px; display: flex; flex-direction: column; gap: 20px; }
+
+  header { border-bottom: 4px solid var(--accent); padding-bottom: 16px; }
+  .kicker { font-size: 13px; font-weight: 700; color: var(--accent); }
+  h1 { margin: 4px 0 6px; font-size: 28px; font-weight: 900; letter-spacing: -.5px; line-height: 1.2; }
+  .sub { margin: 0; color: var(--muted); font-size: 15px; }
+
+  h2 { margin: 4px 0 0; font-size: 18px; font-weight: 900; }
+
+  #videos { display: flex; flex-direction: column; gap: 14px; }
+  .video { background: var(--panel); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .video h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  .video p { margin: 0; font-size: 14px; color: var(--muted); }
+  .frame { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #000; }
+  .frame.vertical { aspect-ratio: 9 / 16; max-height: 70vh; margin: 0 auto; width: auto; }
+  .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .frame.pending { background: var(--accent-soft); display: grid; place-items: center; color: var(--muted); font-size: 14px; font-weight: 500; }
+  .yt { align-self: flex-start; font-size: 14px; color: var(--accent); font-weight: 500; }
+
+  .source { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; color: inherit; text-decoration: none; }
+  .source:hover, .source:focus-visible { border-color: var(--accent); }
+  .source svg { flex: none; width: 28px; height: 28px; fill: currentColor; }
+  .source b { display: block; font-size: 16px; }
+  .source span { font-size: 13px; color: var(--muted); word-break: break-all; }
+
+  footer { font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="kicker">졸업작품 시연</div>
+    <h1>스마트 도어락 모듈</h1>
+    <p class="sub">스마트폰을 꺼내지 않아도, 집 앞에 다가가면 문이 열린다.</p>
+  </header>
+
+  <h2>시연 영상</h2>
+  <div id="videos"></div>
+
+  <h2>소스 코드</h2>
+  <a class="source" href="https://github.com/mangddung/home-entry-system" target="_blank" rel="noopener">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    <div><b>GitHub 저장소</b><span>github.com/mangddung/home-entry-system</span></div>
+  </a>
+
+  <footer>Expo · Flask · ESP32-C6 · Zigbee</footer>
+</main>
+
+<script>
+  const VIDEOS = [
+    { title: "핸즈프리 출입", desc: "폰을 주머니에 넣은 채 다가가면 문이 열리고 잠금화면에 알림이 온다.", youtube: "", vertical: false },
+    { title: "기기 등록", desc: "앱에서 주변 도어락을 찾아 Wi-Fi · Zigbee 모델로 등록한다.", youtube: "", vertical: false },
+    { title: "권한 공유와 출입 거부", desc: "게스트 토큰을 발급하고, 허용 시간대 밖 출입이 서버에서 거부되는 모습.", youtube: "", vertical: false },
+  ];
+
+  const list = document.getElementById("videos");
+  for (const v of VIDEOS) {
+    const card = document.createElement("section");
+    card.className = "video";
+    const h3 = document.createElement("h3");
+    h3.textContent = v.title;
+    const p = document.createElement("p");
+    p.textContent = v.desc;
+    const frame = document.createElement("div");
+    frame.className = "frame" + (v.vertical ? " vertical" : "");
+    card.append(h3, p, frame);
+    if (v.youtube) {
+      const iframe = document.createElement("iframe");
+      iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.youtube)}`;
+      iframe.title = v.title;
+      iframe.loading = "lazy";
+      iframe.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen";
+      iframe.allowFullscreen = true;
+      frame.append(iframe);
+      const link = document.createElement("a");
+      link.className = "yt";
+      link.href = `https://www.youtube.com/watch?v=${encodeURIComponent(v.youtube)}`;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = "YouTube에서 보기 ↗";
+      card.append(link);
+    } else {
+      frame.classList.add("pending");
+      frame.textContent = "영상 준비 중";
+    }
+    list.append(card);
+  }
+</script>
+</body>
+</html>
