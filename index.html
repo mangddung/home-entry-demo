@@ -45,7 +45,7 @@
   .video h3 { margin: 0; font-size: 16px; font-weight: 700; }
   .video p { margin: 0; font-size: 14px; color: var(--muted); }
   .frame { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #000; }
-  .frame.vertical { aspect-ratio: 9 / 16; max-height: 70vh; margin: 0 auto; width: auto; }
+  .frame.vertical { aspect-ratio: 9 / 16; width: min(100%, 340px); margin: 0 auto; }
   .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .frame.pending { background: var(--accent-soft); display: grid; place-items: center; color: var(--muted); font-size: 14px; font-weight: 500; }
   .yt { align-self: flex-start; font-size: 14px; color: var(--accent); font-weight: 500; }
@@ -55,6 +55,8 @@
   .source svg { flex: none; width: 28px; height: 28px; fill: currentColor; }
   .source b { display: block; font-size: 16px; }
   .source span { font-size: 13px; color: var(--muted); word-break: break-all; }
+  #models { display: flex; flex-direction: column; gap: 10px; }
+  #models .source span { word-break: keep-all; }
 
   footer { font-size: 12px; color: var(--muted); text-align: center; }
 </style>
@@ -70,6 +72,18 @@
   <h2>시연 영상</h2>
   <div id="videos"></div>
 
+  <h2>케이스 3D 모델</h2>
+  <div id="models">
+    <a class="source" href="case_carrier_viewer.html">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 2 6.5v11L12 23l10-5.5v-11L12 1zm0 2.3 7.6 4.2L12 11.7 4.4 7.5 12 3.3zM4 9.2l7 3.9v7.6l-7-3.9V9.2zm9 11.5v-7.6l7-3.9v7.6l-7 3.9z"/></svg>
+      <div><b>캐리어 + nanoESP32-C6</b><span>DevKit을 캐리어 보드에 꽂는 1차 구조 · 분해·뚜껑 슬라이드</span></div>
+    </a>
+    <a class="source" href="case_pcb2_viewer.html">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 2 6.5v11L12 23l10-5.5v-11L12 1zm0 2.3 7.6 4.2L12 11.7 4.4 7.5 12 3.3zM4 9.2l7 3.9v7.6l-7-3.9V9.2zm9 11.5v-7.6l7-3.9v7.6l-7 3.9z"/></svg>
+      <div><b>자체 PCB v2 (ESP32-C6-MINI-1-H8)</b><span>41.9 × 30.5 mm 양면 보드 · 셀 902030 · 분해·뚜껑 슬라이드</span></div>
+    </a>
+  </div>
+
   <h2>소스 코드</h2>
   <a class="source" href="https://github.com/mangddung/home-entry-system" target="_blank" rel="noopener">
     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -82,8 +96,8 @@
 <script>
   const VIDEOS = [
     { title: "핸즈프리 출입", desc: "폰을 주머니에 넣은 채 다가가면 문이 열리고 잠금화면에 알림이 온다.", youtube: "", vertical: false },
-    { title: "기기 등록", desc: "앱에서 주변 도어락을 찾아 Wi-Fi · Zigbee 모델로 등록한다.", youtube: "", vertical: false },
-    { title: "권한 공유와 출입 거부", desc: "게스트 토큰을 발급하고, 허용 시간대 밖 출입이 서버에서 거부되는 모습.", youtube: "", vertical: false },
+    { title: "기기 등록", desc: "앱에서 주변 도어락을 찾아 Wi-Fi · Zigbee 모델로 등록한다.", youtube: "32pIdCyrpUc", vertical: true },
+    { title: "게스트 초대", desc: "마스터가 초대 QR을 만들고, 게스트가 스캔해 같은 기기에 등록된다.", youtube: "r7Ocw52EWk8", vertical: true },
   ];
 
   const list = document.getElementById("videos");
@@ -102,6 +116,7 @@
       iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.youtube)}`;
       iframe.title = v.title;
       iframe.loading = "lazy";
+      iframe.referrerPolicy = "strict-origin-when-cross-origin";
       iframe.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen";
       iframe.allowFullscreen = true;
       frame.append(iframe);
