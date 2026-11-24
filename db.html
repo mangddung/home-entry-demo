@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스마트 도어락 모듈 · 서버 DB 구조</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16202e;
+    --muted: #5b6676;
+    --line: #d6dce4;
+    --panel: #f4f6f9;
+    --accent: #1f4e8c;
+    --accent-soft: #e6eef8;
+    --bg: #ffffff;
+    --user: #1f4e8c;
+    --device: #2f7d5b;
+    --bridge: #8a5a12;
+    --solo: #6b7380;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8edf4;
+      --muted: #9aa5b3;
+      --line: #2c3644;
+      --panel: #1a222d;
+      --accent: #7fb0f0;
+      --accent-soft: #1f2d40;
+      --bg: #11171f;
+      --user: #7fb0f0;
+      --device: #6fcf9f;
+      --bridge: #e0a94a;
+      --solo: #9aa5b3;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; line-height: 1.5; word-break: keep-all; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+
+  .back { font-size: 14px; color: var(--accent); text-decoration: none; font-weight: 500; }
+  header { border-bottom: 4px solid var(--accent); padding-bottom: 16px; }
+  .kicker { font-size: 13px; font-weight: 700; color: var(--accent); }
+  h1 { margin: 4px 0 6px; font-size: 26px; font-weight: 900; letter-spacing: -.5px; line-height: 1.2; }
+  .sub { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .legend .dash { width: 18px; height: 0; border-top: 2px dashed var(--muted); border-radius: 0; }
+  .hint { margin: 0; font-size: 13px; color: var(--muted); }
+
+  #stage { position: relative; height: min(72vh, 120vw); min-height: 360px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+  #stage:active { cursor: grabbing; }
+  #diagram { width: 100%; height: 100%; display: block; }
+  .zoom { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .zoom button { width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font: 700 18px/1 "Noto Sans KR", sans-serif; cursor: pointer; }
+  .zoom button.fit { font-size: 12px; }
+  #diagram .edge { fill: none; stroke: var(--line); stroke-width: 2; transition: stroke .15s, opacity .15s; }
+  #diagram .edge.soft { stroke-dasharray: 5 4; }
+  #diagram .hub rect { stroke-width: 2; }
+  #diagram .node { cursor: pointer; transition: opacity .15s; }
+  #diagram .node rect { fill: var(--panel); stroke-width: 1.5; }
+  #diagram .node:focus { outline: none; }
+  #diagram .node:focus-visible rect, #diagram .node.on rect { stroke-width: 3; }
+  #diagram .ko { font-size: 15px; font-weight: 700; fill: var(--ink); }
+  #diagram .tn { font-size: 11.5px; font-family: ui-monospace, Consolas, monospace; fill: var(--muted); }
+  #diagram .hub .ko { font-weight: 900; fill: #fff; }
+  #diagram .hub .tn { fill: #fff; opacity: .85; }
+  @media (prefers-color-scheme: dark) { #diagram .hub .ko, #diagram .hub .tn { fill: var(--bg); } }
+  #diagram.focus .node:not(.on):not(.near), #diagram.focus .edge:not(.on) { opacity: .2; }
+  #diagram .edge.on { stroke: var(--accent); }
+
+  /* 상세 시트 */
+  #sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 62vh; overflow-y: auto; background: var(--bg); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(0,0,0,.18); padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .2s ease; }
+  #sheet.open { transform: none; }
+  body.sheet-open main { padding-bottom: 62vh; }
+  #sheet .inner { max-width: 608px; margin: 0 auto; }
+  #sheet .top { display: flex; align-items: flex-start; gap: 10px; }
+  #sheet h2 { margin: 0; font-size: 18px; font-weight: 900; flex: 1; }
+  #sheet h2 small { display: block; font-size: 13px; font-weight: 500; color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+  #close { flex: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; width: 36px; height: 36px; font-size: 18px; cursor: pointer; }
+  #desc { margin: 8px 0 10px; font-size: 14px; color: var(--muted); }
+  #cols { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  #cols li { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  #cols .row1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+  #cols code { font-family: ui-monospace, Consolas, monospace; font-weight: 700; font-size: 13px; }
+  #cols .type { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--muted); }
+  #cols .b { font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+  #cols .fk { display: block; font-size: 12px; color: var(--muted); }
+  #cols .note { display: block; font-size: 12px; color: var(--muted); }
+  #cols button.link { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+
+  footer { font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="index.html">← 시연 페이지</a>
+  <header>
+    <div class="kicker">서버 구조</div>
+    <h1>DB 테이블 관계</h1>
+    <p class="sub">Flask 서버의 테이블 15개. 사용자와 기기를 중심에, 둘을 잇는 테이블을 그 사이에 놓았다.</p>
+  </header>
+
+  <div class="legend">
+    <span><i style="background:var(--user)"></i>사용자 쪽</span>
+    <span><i style="background:var(--bridge)"></i>사용자↔기기 연결</span>
+    <span><i style="background:var(--device)"></i>기기 쪽</span>
+    <span><i style="background:var(--solo)"></i>독립</span>
+    <span><i class="dash"></i>FK 없이 값만 참조 · SET NULL</span>
+  </div>
+  <p class="hint">드래그로 이동, 휠·두 손가락으로 확대. 테이블을 누르면 컬럼과 연결 관계가 나온다.</p>
+
+  <div id="stage">
+    <svg id="diagram" role="group" aria-label="DB 테이블 관계도"></svg>
+    <div class="zoom">
+      <button id="zin" type="button" aria-label="확대">+</button>
+      <button id="zout" type="button" aria-label="축소">−</button>
+      <button id="zfit" class="fit" type="button" aria-label="전체 보기">맞춤</button>
+    </div>
+  </div>
+
+  <footer>기준: server/app/utils/database/models.py</footer>
+</main>
+
+<section id="sheet" aria-live="polite" aria-hidden="true">
+  <div class="inner">
+    <div class="top">
+      <h2 id="title"></h2>
+      <button id="close" type="button" aria-label="닫기">×</button>
+    </div>
+    <p id="desc"></p>
+    <ul id="cols"></ul>
+  </div>
+</section>
+
+<script>
+  // 컬럼: [이름, 타입, 플래그, 참조, 메모]. 플래그 P=PK U=UNIQUE N=NULL 허용
+  const T = {
+    users: { ko: "사용자", group: "hub-user", desc: "앱 사용자 계정. 카카오 로그인으로 만든다.", cols: [
+      ["user_uuid", "VARCHAR(50)", "P"],
+      ["user_name", "VARCHAR(50)", "U"],
+      ["secret_key", "VARCHAR(255)", "", null, "BLE 인증 키. MASTER_KEK(Fernet)로 암호화해 저장"],
+      ["fcm_token", "VARCHAR(255)", "N", null, "푸시 알림 대상"],
+      ["current_jti", "VARCHAR(36)", "N", null, "현재 유효한 액세스 토큰 ID"],
+      ["created_at", "DATETIME", "N"],
+    ]},
+    device_management: { ko: "기기", group: "hub-device", desc: "도어락 모듈 한 대. BLE UUID, 인증 키, 통신 경로(Wi-Fi/Zigbee)를 갖는다.", cols: [
+      ["device_uuid", "VARCHAR(50)", "P"],
+      ["device_secret_key", "VARCHAR(255)", "U", null, "MASTER_KEK(Fernet)로 암호화해 저장"],
+      ["device_token", "VARCHAR(255)", "U"],
+      ["setup_token", "VARCHAR(255)", "UN"],
+      ["setup_user_uuid", "VARCHAR(50)", "N", null, "설정 요청자. 설정이 끝나면 master가 된다"],
+      ["setup_requested_at", "DATETIME", "N"],
+      ["ble_service_uuid", "VARCHAR(255)", "U"],
+      ["ble_write_uuid", "VARCHAR(255)", "U"],
+      ["ble_read_uuid", "VARCHAR(255)", "U"],
+      ["ble_manufacturer_uuid", "VARCHAR(255)", "UN"],
+      ["last_ping_at", "DATETIME", "N"],
+      ["current_jti", "VARCHAR(36)", "N"],
+      ["rssi_threshold", "INT", "N", null, "근접 해제 임계값(dBm). 마스터가 보정"],
+      ["battery_mv", "INT", "N", null, "마지막 ping의 셀 전압"],
+      ["transport", "VARCHAR(10)", "", null, "wifi(HTTP 직접) / zigbee(게이트웨이 → MQTT)"],
+      ["ieee_addr", "VARCHAR(18)", "UN", null, "Zigbee 칩 EUI-64"],
+      ["gateway_id", "VARCHAR(50)", "N", "gateways.gateway_id*", "마지막으로 메시지가 들어온 게이트웨이"],
+    ]},
+    kakao_oauth_tokens: { ko: "카카오 토큰", group: "user", desc: "카카오 OAuth 액세스·리프레시 토큰.", cols: [
+      ["id", "INT", "P"],
+      ["user_uuid", "VARCHAR(50)", "", "users.user_uuid"],
+      ["kakao_user_id", "BIGINT", "U"],
+      ["access_token", "TEXT", ""],
+      ["refresh_token", "TEXT", "N"],
+      ["token_type", "VARCHAR(50)", "N"],
+      ["expires_at", "DATETIME", "N"],
+      ["scope", "TEXT", "N"],
+      ["created_at", "DATETIME", "N"],
+      ["updated_at", "DATETIME", "N"],
+    ]},
+    user_refresh_tokens: { ko: "사용자 리프레시 토큰", group: "user", desc: "앱 로그인 유지용 리프레시 토큰.", cols: [
+      ["token_value", "VARCHAR(255)", "P"],
+      ["user_uuid", "VARCHAR(50)", "", "users.user_uuid"],
+      ["expired_at", "DATETIME", ""],
+      ["created_at", "DATETIME", "N"],
+    ]},
+    oauth_login_codes: { ko: "로그인 교환 코드", group: "user", desc: "카카오 콜백이 앱에 넘기는 일회용 코드. 토큰을 URL에 싣지 않으려고 쓴다.", cols: [
+      ["code", "VARCHAR(64)", "P"],
+      ["user_uuid", "VARCHAR(50)", "", "users.user_uuid"],
+      ["state", "VARCHAR(64)", "", null, "sha256(앱만 아는 verifier)"],
+      ["expired_at", "DATETIME", ""],
+    ]},
+    user_device_mappings: { ko: "기기 멤버", group: "bridge", desc: "누가 어떤 기기를 쓰는지. 역할은 master / member / guest.", cols: [
+      ["user_uuid", "VARCHAR(50)", "P", "users.user_uuid"],
+      ["device_uuid", "VARCHAR(50)", "P", "device_management.device_uuid"],
+      ["display_name", "VARCHAR(100)", ""],
+      ["role", "VARCHAR(10)", "", null, "master / member / guest"],
+      ["device_nickname", "VARCHAR(100)", "N"],
+      ["created_at", "DATETIME", "N"],
+      ["updated_at", "DATETIME", "N"],
+    ]},
+    user_tokens: { ko: "출입 토큰", group: "bridge", desc: "사용자가 특정 기기를 열 수 있는 권한. 횟수·기간·요일 시간대 제한을 건다.", cols: [
+      ["id", "INT", "P"],
+      ["token_value", "VARCHAR(255)", "U"],
+      ["user_uuid", "VARCHAR(50)", "", "users.user_uuid"],
+      ["device_uuid", "VARCHAR(50)", "", "device_management.device_uuid"],
+      ["max_uses", "INT", "N", null, "NULL이면 전체 횟수 제한 없음"],
+      ["use_count", "INT", "N"],
+      ["is_revoked", "BOOLEAN", ""],
+      ["not_before", "DATETIME", "N"],
+      ["expired_at", "DATETIME", ""],
+      ["schedule_json", "TEXT", "N", null, "반복 규칙(요일·시간대·회차별 횟수)"],
+      ["schedule_tz", "VARCHAR(64)", "N"],
+      ["created_at", "DATETIME", "N"],
+    ]},
+    token_usages: { ko: "회차별 사용 횟수", group: "bridge", desc: "스케줄 토큰이 각 시간대 회차에 몇 번 쓰였는지. (token_id, period_key)가 유일.", cols: [
+      ["id", "INT", "P"],
+      ["token_id", "INT", "", "user_tokens.id"],
+      ["period_key", "VARCHAR(32)", "", null, "<창 시작 로컬 날짜>#<window id>"],
+      ["uses", "INT", ""],
+    ]},
+    invite_codes: { ko: "초대 코드", group: "bridge", desc: "마스터가 만든 초대 QR. 게스트용이면 발급할 출입 토큰 조건을 미리 담는다.", cols: [
+      ["invite_code", "VARCHAR(255)", "P"],
+      ["device_uuid", "VARCHAR(50)", "N", "device_management.device_uuid"],
+      ["creator_uuid", "VARCHAR(50)", "N", "users.user_uuid"],
+      ["display_name", "VARCHAR(100)", ""],
+      ["role", "VARCHAR(10)", ""],
+      ["is_used", "BOOLEAN", "N"],
+      ["expired_at", "DATETIME", "N"],
+      ["created_at", "DATETIME", "N"],
+      ["token_max_uses", "INT", "N"],
+      ["token_expire_minutes", "INT", "N"],
+      ["token_not_before", "DATETIME", "N"],
+    ]},
+    activity_logs: { ko: "출입 기록", group: "bridge", soft: true, desc: "출입·설정 변경 기록. 사용자나 기기가 지워져도 기록은 남는다(SET NULL).", cols: [
+      ["id", "INT", "P"],
+      ["user_uuid", "VARCHAR(50)", "N", "users.user_uuid~"],
+      ["device_uuid", "VARCHAR(50)", "N", "device_management.device_uuid~"],
+      ["action", "VARCHAR(50)", ""],
+      ["detail", "TEXT", "N"],
+      ["created_at", "DATETIME", "N"],
+    ]},
+    settings: { ko: "기기 설정", group: "device", desc: "서보 각도와 RSSI 임계값. 기기당 한 행.", cols: [
+      ["device_uuid", "VARCHAR(50)", "P", "device_management.device_uuid"],
+      ["rssi_threshold", "INT", ""],
+      ["motor_down_level", "FLOAT", ""],
+      ["motor_up_level", "FLOAT", ""],
+    ]},
+    device_location: { ko: "기기 위치", group: "device", desc: "지오펜스 중심 좌표. 기기당 한 행.", cols: [
+      ["device_uuid", "VARCHAR(50)", "P", "device_management.device_uuid"],
+      ["latitude", "FLOAT", ""],
+      ["longitude", "FLOAT", ""],
+    ]},
+    device_refresh_tokens: { ko: "기기 리프레시 토큰", group: "device", desc: "펌웨어가 서버 인증을 이어가는 리프레시 토큰.", cols: [
+      ["token_value", "VARCHAR(255)", "P"],
+      ["device_uuid", "VARCHAR(50)", "", "device_management.device_uuid"],
+      ["expired_at", "DATETIME", ""],
+      ["created_at", "DATETIME", "N"],
+    ]},
+    gateways: { ko: "Zigbee 게이트웨이", group: "device", desc: "Zigbee2MQTT 게이트웨이. MQTT 토픽 homes/<gateway_id>/... 를 쓴다. 기기와는 FK 없이 gateway_id 값으로만 이어진다.", cols: [
+      ["gateway_id", "VARCHAR(50)", "P"],
+      ["created_at", "DATETIME", "N"],
+    ]},
+    token_blacklist: { ko: "토큰 블랙리스트", group: "solo", desc: "로그아웃·재발급으로 폐기한 JWT의 jti. 만료 시각까지 거부한다.", cols: [
+      ["jti", "VARCHAR(36)", "P"],
+      ["expired_at", "DATETIME", ""],
+      ["created_at", "DATETIME", "N"],
+    ]},
+  };
+
+  // 레이아웃: 같은 크기 노드를 열(c)·행(r) 격자에 놓는다. 사용자 쪽 ← users ← 연결 테이블 → device_management → 기기 쪽
+  const NW = 180, NH = 56, CX = 270, RY = 88;
+  const GRID = {
+    kakao_oauth_tokens: [0, 1], user_refresh_tokens: [0, 2], oauth_login_codes: [0, 3],
+    users: [1, 2], token_blacklist: [1, 4.5],
+    user_device_mappings: [2, 0], user_tokens: [2, 1], token_usages: [2, 2], invite_codes: [2, 3], activity_logs: [2, 4],
+    device_management: [3, 2],
+    settings: [4, 0.5], device_location: [4, 1.5], device_refresh_tokens: [4, 2.5], gateways: [4, 3.5],
+  };
+  const pos = {};
+  for (const [name, [c, r]] of Object.entries(GRID)) pos[name] = { x: c * CX, y: r * RY, w: NW, h: NH };
+  const BOUNDS = { x: -30, y: -30, w: 4 * CX + NW + 60, h: 4.5 * RY + NH + 60 };
+
+  // FK 컬럼에서 간선 뽑기. 끝 '*' = FK 없이 값만 참조, '~' = SET NULL
+  const edges = [];
+  for (const [name, t] of Object.entries(T)) {
+    for (const c of t.cols) {
+      if (!c[3]) continue;
+      const ref = c[3].replace(/[*~]$/, "").split(".")[0];
+      edges.push({ a: name, b: ref, soft: /[*~]$/.test(c[3]) });
+    }
+  }
+
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("diagram");
+  const el = (tag, attrs, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    parent.append(e);
+    return e;
+  };
+  const color = g => ({ "hub-user": "var(--user)", user: "var(--user)", "hub-device": "var(--device)", device: "var(--device)", bridge: "var(--bridge)", solo: "var(--solo)" })[g];
+
+  // 간선: 다른 열이면 옆면끼리 곡선, 같은 열이면 위아래 직선
+  const edgeEls = [];
+  const edgeLayer = el("g", {}, svg);
+  for (const e of edges) {
+    let p = pos[e.a], q = pos[e.b];
+    let d;
+    if (p.x === q.x) {
+      if (p.y > q.y) [p, q] = [q, p];
+      d = `M${p.x + NW / 2} ${p.y + NH} V${q.y}`;
+    } else {
+      if (p.x > q.x) [p, q] = [q, p];
+      const x1 = p.x + NW, y1 = p.y + NH / 2, x2 = q.x, y2 = q.y + NH / 2, m = (x1 + x2) / 2;
+      d = `M${x1} ${y1} C${m} ${y1} ${m} ${y2} ${x2} ${y2}`;
+    }
+    const path = el("path", { d, class: "edge" + (e.soft ? " soft" : "") }, edgeLayer);
+    edgeEls.push({ path, a: e.a, b: e.b });
+  }
+
+  const nodeEls = {};
+  for (const name of Object.keys(GRID)) {
+    const t = T[name], p = pos[name], c = color(t.group), hub = t.group.startsWith("hub");
+    const g = el("g", { class: "node" + (hub ? " hub" : ""), tabindex: 0, role: "button", "aria-label": `${t.ko} (${name}) 상세 보기`, "data-name": name }, svg);
+    el("rect", { x: p.x, y: p.y, width: NW, height: NH, rx: 8, stroke: c, ...(hub ? { style: `fill:${c}` } : {}) }, g);
+    if (!hub) el("rect", { x: p.x, y: p.y, width: 5, height: NH, rx: 2, fill: c, stroke: "none" }, g);
+    el("text", { x: p.x + 14, y: p.y + 24, class: "ko" }, g).textContent = t.ko;
+    el("text", { x: p.x + 14, y: p.y + 43, class: "tn" }, g).textContent = name;
+    g.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(name); } });
+    nodeEls[name] = g;
+  }
+
+  // 확대·이동: viewBox를 캔버스 비율에 맞춰 직접 바꾼다
+  const stage = document.getElementById("stage");
+  let vb = null;
+  const MIN_W = 300, MAX_W = BOUNDS.w * 2;
+  function apply() { svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); }
+  function fit() {
+    const ar = stage.clientHeight / stage.clientWidth;
+    let w = BOUNDS.w, h = w * ar;
+    if (h < BOUNDS.h) { h = BOUNDS.h; w = h / ar; }
+    vb = { x: BOUNDS.x + (BOUNDS.w - w) / 2, y: BOUNDS.y + (BOUNDS.h - h) / 2, w, h };
+    apply();
+  }
+  // 화면 좌표(px, stage 기준)를 고정점으로 k배 확대
+  function zoomAt(k, px, py) {
+    const w = Math.min(MAX_W, Math.max(MIN_W, vb.w / k));
+    k = vb.w / w;
+    const sx = vb.x + px / stage.clientWidth * vb.w, sy = vb.y + py / stage.clientHeight * vb.h;
+    vb = { x: sx - (sx - vb.x) / k, y: sy - (sy - vb.y) / k, w, h: vb.h / k };
+    apply();
+  }
+  function panPx(dx, dy) {
+    vb.x -= dx / stage.clientWidth * vb.w;
+    vb.y -= dy / stage.clientHeight * vb.h;
+    apply();
+  }
+  function local(ev) { const r = stage.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; }
+
+  stage.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    const [x, y] = local(ev);
+    zoomAt(Math.exp(-ev.deltaY * 0.0015), x, y);
+  }, { passive: false });
+
+  // 포인터: 한 손가락 = 이동, 두 손가락 = 핀치. 거의 안 움직이고 뗀 탭만 노드 선택
+  const pts = new Map();
+  let downNode = null, moved = 0;
+  stage.addEventListener("pointerdown", ev => {
+    if (ev.target.closest(".zoom")) return;
+    stage.setPointerCapture(ev.pointerId);
+    pts.set(ev.pointerId, local(ev));
+    if (pts.size === 1) { moved = 0; downNode = ev.target.closest(".node"); }
+    else downNode = null;
+  });
+  stage.addEventListener("pointermove", ev => {
+    if (!pts.has(ev.pointerId)) return;
+    const prev = [...pts.values()];
+    pts.set(ev.pointerId, local(ev));
+    const cur = [...pts.values()];
+    if (cur.length === 1) {
+      const dx = cur[0][0] - prev[0][0], dy = cur[0][1] - prev[0][1];
+      moved += Math.abs(dx) + Math.abs(dy);
+      panPx(dx, dy);
+    } else if (cur.length === 2) {
+      const mid = a => [(a[0][0] + a[1][0]) / 2, (a[0][1] + a[1][1]) / 2];
+      const dist = a => Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1]) || 1;
+      const m0 = mid(prev), m1 = mid(cur);
+      panPx(m1[0] - m0[0], m1[1] - m0[1]);
+      zoomAt(dist(cur) / dist(prev), m1[0], m1[1]);
+    }
+  });
+  const up = ev => {
+    if (!pts.delete(ev.pointerId)) return;
+    if (ev.type === "pointerup" && pts.size === 0 && downNode && moved < 8) select(downNode.dataset.name);
+    downNode = null;
+  };
+  stage.addEventListener("pointerup", up);
+  stage.addEventListener("pointercancel", up);
+
+  const zoomCenter = k => zoomAt(k, stage.clientWidth / 2, stage.clientHeight / 2);
+  document.getElementById("zin").addEventListener("click", () => zoomCenter(1.4));
+  document.getElementById("zout").addEventListener("click", () => zoomCenter(1 / 1.4));
+  document.getElementById("zfit").addEventListener("click", fit);
+  new ResizeObserver(() => {
+    if (!vb) {
+      fit();
+      // 세로 화면은 전체가 너무 작아지므로 처음엔 사용자·연결·기기 세 열만 보여 준다
+      if (stage.clientHeight > stage.clientWidth) zoomCenter(vb.w / (2 * CX + NW + 40));
+      return;
+    }
+    const cx = vb.x + vb.w / 2, cy = vb.y + vb.h / 2;
+    vb.h = vb.w * stage.clientHeight / stage.clientWidth;
+    vb.x = cx - vb.w / 2; vb.y = cy - vb.h / 2;
+    apply();
+  }).observe(stage);
+
+  // 선택·상세 시트
+  const sheet = document.getElementById("sheet");
+  const cols = document.getElementById("cols");
+  function select(name) {
+    const t = T[name];
+    svg.classList.add("focus");
+    const near = new Set();
+    for (const e of edgeEls) {
+      const on = e.a === name || e.b === name;
+      e.path.classList.toggle("on", on);
+      if (on) { near.add(e.a); near.add(e.b); }
+    }
+    for (const [n, g] of Object.entries(nodeEls)) {
+      g.classList.toggle("on", n === name);
+      g.classList.toggle("near", near.has(n));
+    }
+    const title = document.getElementById("title");
+    title.textContent = t.ko;
+    const small = document.createElement("small");
+    small.textContent = name;
+    title.append(small);
+    document.getElementById("desc").textContent = t.desc;
+    cols.replaceChildren(...t.cols.map(([cn, type, flags, ref, note]) => {
+      const li = document.createElement("li");
+      const r1 = document.createElement("div");
+      r1.className = "row1";
+      const code = document.createElement("code");
+      code.textContent = cn;
+      const ty = document.createElement("span");
+      ty.className = "type";
+      ty.textContent = type + (flags.includes("N") ? " · NULL" : "");
+      r1.append(code, ty);
+      if (flags.includes("P")) r1.append(badge("PK"));
+      if (flags.includes("U")) r1.append(badge("UNIQUE"));
+      if (ref) r1.append(badge(ref.endsWith("*") ? "참조" : "FK"));
+      li.append(r1);
+      if (ref) {
+        const fk = document.createElement("span");
+        fk.className = "fk";
+        const target = ref.replace(/[*~]$/, "");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "link";
+        btn.textContent = target;
+        btn.addEventListener("click", () => select(target.split(".")[0]));
+        fk.append("→ ", btn, ref.endsWith("*") ? " (FK 없음)" : ref.endsWith("~") ? " · 삭제 시 NULL" : " · 삭제 시 함께 삭제");
+        li.append(fk);
+      }
+      if (note) {
+        const n = document.createElement("span");
+        n.className = "note";
+        n.textContent = note;
+        li.append(n);
+      }
+      return li;
+    }));
+    sheet.scrollTop = 0;
+    sheet.classList.add("open");
+    sheet.setAttribute("aria-hidden", "false");
+    // 시트가 화면 아래를 덮으므로 캔버스를 화면 위로 올리고 노드를 캔버스 위쪽에 둔다
+    document.body.classList.add("sheet-open");
+    window.scrollTo({ top: window.scrollY + stage.getBoundingClientRect().top - 8 });
+    const p = pos[name];
+    vb.x = p.x + NW / 2 - vb.w / 2;
+    vb.y = p.y + NH / 2 - vb.h * 0.2;
+    apply();
+  }
+  function badge(text) {
+    const b = document.createElement("span");
+    b.className = "b";
+    b.textContent = text;
+    return b;
+  }
+  function closeSheet() {
+    sheet.classList.remove("open");
+    sheet.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("sheet-open");
+    svg.classList.remove("focus");
+    for (const g of Object.values(nodeEls)) g.classList.remove("on", "near");
+    for (const e of edgeEls) e.path.classList.remove("on");
+  }
+  document.getElementById("close").addEventListener("click", closeSheet);
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape") closeSheet(); });
+</script>
+</body>
+</html>
